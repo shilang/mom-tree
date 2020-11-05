@@ -10,3 +10,4 @@
            parent
            children
            
+当树型构建完成之后， 以query-keyword中的每条记录去匹配这棵树，而获取应的TYPE_CODE.
