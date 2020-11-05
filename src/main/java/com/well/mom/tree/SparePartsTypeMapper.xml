@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.well.mom.rps.dao.mapper.sparepart.SparePartsTypeMapper">
+
+    <insert id="add" parameterType="com.well.mom.rps.dao.request.sparepart.AddSparePartsTypeRequest">
+        INSERT INTO $etpm_spare_parts_type
+        (type_name, remark, company_id, org_id, created_at, created_by, type_code, parent_id)
+        VALUES
+        (#{typeName}, #{remark}, #{companyId}, #{orgId}, current_timestamp, #{createdBy},
+        <if test='typeCode !=null'>
+            #{typeCode}
+        </if>
+        <if test='typeCode ==null'>
+        #{parentCode}|| NVL((SELECT LPAD( MAX( TO_NUMBER( SUBSTR( TYPE_CODE, -(#{subLength}) ) ) )+ 1, #{subLength}, '0') FROM $etpm_spare_parts_type WHERE parent_id = #{parentId}), #{initCode})
+        </if>
+        ,#{parentId}
+        )
+    </insert>
+
+
+    <select id="list" parameterType="com.well.mom.rps.dao.request.sparepart.ListSparePartsTypeRequest"
+        resultType="com.well.mom.rps.dao.dto.sparepart.SparePartsTypeDto">
+        <if test='keyword == null or keyword ==""'>
+        SELECT spt.id,
+                spt.type_name,
+                spt.remark,
+                spt.type_code,
+                spt.parent_id
+        FROM $etpm_spare_parts_type spt
+        WHERE spt.deleted = 0
+        order by spt.type_name ASC
+        </if>
+        <if test='keyword !=null and keyword !=""'>
+            SELECT  DISTINCT *  FROM
+            (
+            SELECT  *  FROM  etpm_spare_parts_type a
+            START WITH  a.id IN ( SELECT id
+            FROM  etpm_spare_parts_type
+            WHERE
+            --做层级限制
+            type_name LIKE #{escapedKeyword}  OR type_code LIKE #{escapedKeyword}  )
+            CONNECT BY PRIOR parent_id = id
+            UNION ALL
+            --查询子集（包含自己）
+            SELECT  *  FROM etpm_spare_parts_type b
+            START WITH  b.id IN ( SELECT id
+            FROM  etpm_spare_parts_type
+            WHERE
+            type_name LIKE #{escapedKeyword} OR type_code LIKE #{escapedKeyword} )
+            CONNECT BY  PRIOR id = parent_id )
+        </if>
+    </select>
+
+    <select id="queryTreeFromTop" resultType="com.well.mom.rps.dao.dto.sparepart.SparePartsTypeDto">
+        SELECT
+            *
+        FROM
+            etpm_spare_parts_type a
+        START WITH
+            a.id IN (
+            SELECT
+                id
+            FROM
+                etpm_spare_parts_type
+            WHERE
+                LENGTH(type_code)= 2)
+        CONNECT BY
+            PRIOR id = parent_id
+    </select>
+
+</mapper>
